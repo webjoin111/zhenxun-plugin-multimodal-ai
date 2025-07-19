@@ -1,0 +1,213 @@
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    color: #2c232e;
+    background-color: #f8efe7;
+    margin: 0;
+}
+
+
+h1, h2, h3, h4, h5, h6 {
+    margin-top: 1.5em;
+    margin-bottom: 0.8em;
+    font-weight: 600;
+    line-height: 1.25;
+    border-bottom: 1px solid #d2c9c4;
+    padding-bottom: 0.3em;
+    color: #b16803;
+}
+h1 { font-size: 2em; }
+h2 { font-size: 1.5em; }
+h3 { font-size: 1.25em; }
+
+p, ul, ol, dl, blockquote, table, pre {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+strong, b {
+    font-weight: bold;
+    color: #2c232e;
+}
+
+em, i {
+    font-style: italic;
+    color: #2c232e;
+}
+
+del, s {
+    color: #a59c9c;
+    text-decoration: line-through;
+}
+
+a {
+    color: #218871;
+    text-decoration: none;
+    font-weight: 500;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+hr {
+    height: 1px;
+    padding: 0;
+    margin: 24px 0;
+    background-color: #d2c9c4;
+    border: 0;
+}
+
+
+ul, ol {
+    padding-left: 2em;
+}
+
+li {
+    margin-bottom: 0.4em;
+}
+
+li input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    top: 3px;
+    margin-right: 8px;
+    width: 16px;
+    height: 16px;
+    background-color: #fdf7f3;
+    border: 1px solid #d2c9c4;
+    border-radius: 4px;
+    vertical-align: middle;
+}
+li input[type="checkbox"]:checked::before {
+    content: '✔';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    color: #ce4770;
+}
+
+
+blockquote {
+    margin: 0 0 16px 0;
+    padding: 10px 20px;
+    font-style: italic;
+    color: #72696d;
+    background-color: #eee5de;
+    border-left: 4px solid #beb5b3;
+    border-radius: 0 6px 6px 0;
+}
+
+table {
+    display: block;
+    width: 100%;
+    overflow: auto;
+    border-spacing: 0;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    border-radius: 6px;
+    border: 1px solid #d2c9c4;
+}
+table th, table td {
+    padding: 12px 15px;
+    border: 1px solid #d2c9c4;
+}
+table th {
+    font-weight: 600;
+    background-color: #eee5de;
+}
+table tr:nth-child(2n) {
+    background-color: #eee5de;
+}
+table tr {
+    background-color: #f8efe7;
+}
+
+
+pre {
+    background-color: #fdf7f3;
+    color: #2c232e;
+    border: 1px solid #d2c9c4;
+    border-radius: 6px;
+    padding: 16px;
+    overflow: auto;
+    font-size: 85%;
+    line-height: 1.45;
+    word-wrap: normal;
+}
+
+code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+}
+
+:not(pre) > code {
+    padding: 0.2em 0.4em;
+    margin: 0 2px;
+    font-size: 85%;
+    background-color: #eee5de;
+    border-radius: 4px;
+}
+
+pre code {
+    background-color: transparent;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    font-size: 100%;
+}
+
+pre .c, pre .c1, pre .cs, pre .cm { color: #a59c9c; font-style: italic; }
+pre .err { color: #ce4770; font-style: italic underline; }
+pre .k, pre .kc, pre .kd, pre .kp, pre .kr, pre .ow, pre .kn { color: #ce4770; }
+pre .o { color: #ce4770; }
+pre .p, pre .pi { color: #92898a; }
+pre .n, pre .nx { color: #2c232e; }
+pre .s, pre .s1, pre .s2, pre .sb, pre .sc, pre .sd, pre .se, pre .sh, pre .si, pre .sx { color: #b16803; }
+pre .sr { color: #ce4770; }
+pre .na { font-style: italic; color: #2473b6; }
+pre .nb, pre .bp { color: #2473b6; font-style: italic; }
+pre .nc { color: #2473b6; }
+pre .no, pre .m, pre .mb, pre .mf, pre .mh, pre .mi, pre .il, pre .mo { color: #6851a2; }
+pre .nd { color: #218871; }
+pre .ni { color: #218871; }
+pre .ne { color: #ce4770; }
+pre .nf { color: #218871; }
+pre .nt { color: #ce4770; }
+pre .nv, pre .vg, pre .vi, pre .vm { color: #2c232e; }
+pre .ss { color: #d4572b; }
+
+.mermaid {
+    background-color: #fdf7f3;
+    padding: 1em;
+    border-radius: 6px;
+}
+.mermaid text {
+    fill: #2c232e;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.mermaid .node rect, .mermaid .node circle, .mermaid .node ellipse, .mermaid .node polygon {
+    fill: #eee5de;
+    stroke: #218871;
+    stroke-width: 2px;
+}
+.mermaid .edgePath .path {
+    stroke: #92898a;
+}
+.mermaid .arrowheadPath {
+    fill: #92898a;
+}
+.mermaid .edgeLabel {
+    background-color: #fdf7f3;
+    color: #d4572b;
+}
+.mermaid .cluster rect {
+    fill: rgba(206, 71, 112, 0.1);
+    stroke: #ce4770;
+    stroke-width: 1.5px;
+}
+.mermaid .cluster text {
+    font-weight: bold;
+    fill: #ce4770;
+}

@@ -1,0 +1,217 @@
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    color: #39007f;
+    background-color: #fceaf1;
+    margin: 0;
+}
+
+
+h1, h2, h3, h4, h5, h6 {
+    margin-top: 1.5em;
+    margin-bottom: 0.8em;
+    font-weight: 700;
+    line-height: 1.25;
+    border-bottom: 2px solid #ffb1b7;
+    padding-bottom: 0.3em;
+    color: #ff4574;
+}
+h1 { font-size: 2em; }
+h2 { font-size: 1.5em; }
+h3 { font-size: 1.25em; }
+
+p, ul, ol, dl, blockquote, table, pre {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+strong, b {
+    font-weight: bold;
+    color: #974283;
+}
+
+em, i {
+    font-style: italic;
+    color: #0b216f;
+}
+
+del, s {
+    color: #8e8e90;
+    text-decoration: line-through;
+}
+
+a {
+    color: #ef1561;
+    text-decoration: none;
+    font-weight: 500;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+hr {
+    height: 2px;
+    padding: 0;
+    margin: 24px 0;
+    background-color: #ffb1b7;
+    border: 0;
+}
+
+
+ul, ol {
+    padding-left: 2em;
+}
+
+li {
+    margin-bottom: 0.4em;
+}
+
+li::marker {
+    color: #ff4574;
+}
+
+li input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    top: 3px;
+    margin-right: 8px;
+    width: 16px;
+    height: 16px;
+    background-color: #ffffff;
+    border: 1.5px solid #ffb1b7;
+    border-radius: 4px;
+    vertical-align: middle;
+}
+li input[type="checkbox"]:checked::before {
+    content: '♥';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+    color: #ff4574;
+}
+
+
+blockquote {
+    margin: 0 0 16px 0;
+    padding: 10px 20px;
+    color: #974283;
+    background-color: #fcdee9;
+    border-left: 4px solid #ff7ba2;
+    border-radius: 0 6px 6px 0;
+}
+
+table {
+    display: block;
+    width: 100%;
+    overflow: auto;
+    border-spacing: 0;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    border-radius: 6px;
+    border: 1px solid #ffb1b7;
+}
+table th, table td {
+    padding: 12px 15px;
+    border: 1px solid #ffb1b7;
+}
+table th {
+    font-weight: 600;
+    color: #333333;
+    background-color: #fcdee9;
+}
+table tr:nth-child(2n) {
+    background-color: #fff7fa;
+}
+table tr {
+    background-color: #ffffff;
+}
+
+
+pre {
+    background-color: #fff7fa;
+    color: #333333;
+    border: 1px solid #ffb1b7;
+    border-radius: 6px;
+    padding: 16px;
+    overflow: auto;
+    font-size: 85%;
+    line-height: 1.45;
+    word-wrap: normal;
+}
+
+code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+}
+
+:not(pre) > code {
+    padding: 0.2em 0.4em;
+    margin: 0 2px;
+    font-size: 85%;
+    background-color: #fcdee9;
+    border-radius: 4px;
+    color: #974283;
+}
+
+pre code {
+    background-color: transparent;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    font-size: 100%;
+}
+
+pre .c, pre .c1, pre .cs, pre .cm { color: #8e8e90; font-style: italic; }
+pre .err { color: #be1100; }
+pre .k, pre .kc, pre .kd, pre .kp, pre .kr, pre .ow, pre .kn { color: #ff4574; }
+pre .o { color: #974283; }
+pre .p, pre .pi { color: #333333; }
+pre .n, pre .nv, pre .vc, pre .vg, pre .vi, pre .vm { color: #39007f; }
+pre .s, pre .s1, pre .s2, pre .sb, pre .sc, pre .sd, pre .sh, pre .si, pre .sx { color: #008000; }
+pre .se { color: #ef1561; }
+pre .sr { color: #811F3F; }
+pre .na { color: #ff4574; font-style: italic; }
+pre .nb, pre .bp { color: #0000FF; }
+pre .nc { color: #9b46b0; font-weight: bold; }
+pre .no, pre .m, pre .mb, pre .mf, pre .mh, pre .mi, pre .il, pre .mo { color: #098658; }
+pre .nd { color: #795E26; }
+pre .ni { color: #800000; }
+pre .ne { color: #e51400; }
+pre .nf { color: #795E26; }
+pre .nt { color: #800000; }
+pre .ss { color: #A31515; }
+
+.mermaid {
+    background-color: #fff7fa;
+    padding: 1em;
+    border-radius: 6px;
+}
+.mermaid text {
+    fill: #39007f;
+}
+.mermaid .node rect, .mermaid .node circle, .mermaid .node ellipse, .mermaid .node polygon {
+    fill: #fcdee9;
+    stroke: #ff4574;
+    stroke-width: 2px;
+}
+.mermaid .edgePath .path {
+    stroke: #974283;
+}
+.mermaid .arrowheadPath {
+    fill: #974283;
+}
+.mermaid .edgeLabel {
+    background-color: #fff7fa;
+    color: #39007f;
+}
+.mermaid .cluster rect {
+    fill: rgba(255, 123, 162, 0.1);
+    stroke: #ff7ba2;
+    stroke-width: 1.5px;
+}
+.mermaid .cluster text {
+    font-weight: bold;
+    fill: #ff4574;
+}
