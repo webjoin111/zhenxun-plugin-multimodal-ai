@@ -5,7 +5,7 @@ from typing import Any
 
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 
-from zhenxun.configs.path_config import DATA_PATH
+from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
 
 from ..config import BROWSER_COOLDOWN_SECONDS, base_config
@@ -481,7 +481,7 @@ class DoubaoImageGenerator:
                 if download_result["success"] and download_result["data"]:
                     try:
                         filename = f"doubao_{timestamp}_{prompt_hash}_{download_result['index']}.png"
-                        filepath = DATA_PATH / "multimodal_ai" / "images" / filename
+                        filepath = TEMP_PATH / "multimodal-ai" / "image" / filename
                         filepath.parent.mkdir(parents=True, exist_ok=True)
 
                         import aiofiles

@@ -1,7 +1,7 @@
 import base64
 from contextlib import asynccontextmanager
 from typing import Any
-
+from .config import base_config
 from zhenxun.services.log import logger
 
 try:
@@ -105,7 +105,7 @@ class MCPClientSessionWrapper(MCPCompatible):
             ]
 
 
-from .config import base_config
+
 
 _current_file_list: list[dict[str, Any]] | None = None
 

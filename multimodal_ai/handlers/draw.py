@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 import re
-import tempfile
 import time
 
 import aiofiles
@@ -26,6 +25,7 @@ from zhenxun.services.llm import (
 from zhenxun.services.llm.config import LLMGenerationConfig
 from zhenxun.services.llm.types import get_user_friendly_error_message
 from zhenxun.services.log import logger
+from zhenxun.configs.path_config import TEMP_PATH
 
 from .. import ai_draw
 from ..config import base_config
@@ -258,7 +258,7 @@ async def ai_draw_handler(
                     image_data = resp.content
 
             if image_data:
-                temp_dir = Path(tempfile.gettempdir()) / "multimodal_ai" / "temp_images"
+                temp_dir = TEMP_PATH / "multimodal-ai" / "uploads"
                 temp_dir.mkdir(parents=True, exist_ok=True)
                 timestamp = int(time.time() * 1000)
                 temp_filename = f"upload_{timestamp}.png"

@@ -1,7 +1,8 @@
 import io
 from pathlib import Path
 import re
-import tempfile
+import time
+import uuid
 import wave
 
 import aiofiles
@@ -9,6 +10,7 @@ import markdown
 from nonebot_plugin_htmlrender import data_source as hr_data
 from nonebot_plugin_htmlrender import html_to_pic
 
+from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
 
 from ..config import CSS_DIR, MD_FONT_SIZE, base_config
@@ -123,16 +125,19 @@ async def save_audio_to_temp_file(
             audio_data = convert_pcm_to_wav(audio_data)
             logger.debug(f"✅ PCM转WAV完成，新数据大小: {len(audio_data)} 字节")
 
-        temp_file = tempfile.NamedTemporaryFile(
-            suffix=f".{file_extension}", delete=False
+        temp_dir = TEMP_PATH / "multimodal-ai" / "audio"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+
+        unique_filename = (
+            f"{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}.{file_extension}"
         )
+        temp_path = temp_dir / unique_filename
 
-        logger.debug(f"📁 创建临时文件: {temp_file.name}")
+        logger.debug(f"📁 创建临时文件: {temp_path}")
 
-        temp_file.write(audio_data)
-        temp_file.close()
+        async with aiofiles.open(temp_path, "wb") as f:
+            await f.write(audio_data)
 
-        temp_path = temp_file.name
         logger.info(f"✅ 音频数据已保存到临时文件: {temp_path}")
 
         if Path(temp_path).exists():
@@ -142,7 +147,7 @@ async def save_audio_to_temp_file(
             logger.error(f"❌ 临时文件创建失败，文件不存在: {temp_path}")
             raise FileNotFoundError(f"临时文件创建失败: {temp_path}")
 
-        return temp_path
+        return str(temp_path)
 
     except Exception as e:
         logger.error(f"❌ 保存音频到临时文件失败: {e}")

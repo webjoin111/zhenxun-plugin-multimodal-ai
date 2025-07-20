@@ -14,7 +14,7 @@ from nonebot_plugin_alconna import on_alconna
 from nonebot_plugin_alconna.uniseg import Image as UniImage
 from nonebot_plugin_alconna.uniseg import UniMsg
 
-from zhenxun.configs.path_config import DATA_PATH
+from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.configs.utils import PluginCdBlock, PluginExtraData, RegisterConfig
 from zhenxun.services.llm.core import http_client_manager
 from zhenxun.services.log import logger
@@ -146,7 +146,7 @@ __plugin_meta__ = PluginMetadata(
                 result="AI功能冷却中，请等待{cd}后再试~",
             )
         ],
-    ).model_dump(),
+    ).dict(),
 )
 
 ai_alconna = Alconna(
@@ -329,19 +329,55 @@ async def multimodal_ai_shutdown():
     logger.info("会话管理器已停止")
 
 
-@scheduler.scheduled_job("cron", hour=8, id="job_clean_images")
-async def clean_rendered_images():
-    img_dir = DATA_PATH / "multimodal_ai" / "md_to_pic"
+@scheduler.scheduled_job(
+    "cron", hour=11, minute=30, id="job_cleanup_multimodal_ai_temp_files"
+)
+async def cleanup_plugin_temp_files():
+    """
+    每天11:30清理 multimodal-ai 插件在 TEMP_PATH 中产生的所有超过24小时的临时文件。
+    这包括AI绘图、Markdown转图片、上传文件、音频转换等所有缓存。
+    """
+    from datetime import datetime
+    import shutil
+
+    base_temp_dir = TEMP_PATH / "multimodal-ai"
+    if not base_temp_dir.exists():
+        return
+
+    logger.info(f"开始清理插件临时目录: {base_temp_dir}")
+    now = datetime.now().timestamp()
+    cleanup_threshold = 86400
+    cleaned_files = 0
+    cleaned_dirs = 0
+
     try:
-        if img_dir.exists():
-            for file in img_dir.iterdir():
-                if file.is_file():
-                    file.unlink()
-            logger.info(f"已清理 {img_dir} 目录下的所有文件")
+        for file_path in base_temp_dir.rglob("*"):
+            if file_path.is_file():
+                try:
+                    if (now - file_path.stat().st_mtime) > cleanup_threshold:
+                        file_path.unlink()
+                        cleaned_files += 1
+                except Exception as e:
+                    logger.warning(f"删除临时文件 {file_path} 失败: {e}")
+
+        for dir_path in sorted(
+            list(base_temp_dir.rglob("*")), key=lambda p: len(p.parts), reverse=True
+        ):
+            if dir_path.is_dir() and not any(dir_path.iterdir()):
+                try:
+                    shutil.rmtree(dir_path)
+                    cleaned_dirs += 1
+                except Exception as e:
+                    logger.warning(f"删除空临时目录 {dir_path} 失败: {e}")
+
+        if cleaned_files > 0 or cleaned_dirs > 0:
+            logger.info(
+                f"插件临时目录清理完成。删除了 {cleaned_files} 个文件和 {cleaned_dirs} 个空目录。"
+            )
         else:
-            logger.debug(f"图片目录不存在: {img_dir}")
+            logger.debug("插件临时目录中没有需要清理的文件或目录。")
     except Exception as e:
-        logger.error(f"清理图片目录失败: {e}")
+        logger.error(f"清理插件临时目录时发生未知错误: {e}")
 
 
 @scheduler.scheduled_job("cron", hour=2, id="job_clean_queue_requests")

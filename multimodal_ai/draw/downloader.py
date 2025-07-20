@@ -6,10 +6,10 @@ from typing import Any
 import aiofiles
 import aiohttp
 
-from zhenxun.configs.path_config import DATA_PATH
+from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
 
-IMAGE_DIR = DATA_PATH / "multimodal_ai" / "images"
+IMAGE_DIR = TEMP_PATH / "multimodal-ai" / "image"
 IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 
