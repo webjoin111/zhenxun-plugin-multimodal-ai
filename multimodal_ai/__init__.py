@@ -13,18 +13,21 @@ from nonebot.rule import Rule, is_type
 from nonebot_plugin_alconna import on_alconna
 from nonebot_plugin_alconna.uniseg import Image as UniImage
 from nonebot_plugin_alconna.uniseg import UniMsg
-
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.configs.utils import PluginCdBlock, PluginExtraData, RegisterConfig
 from zhenxun.services.llm.core import http_client_manager
+from zhenxun.services.llm import AIConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import LimitWatchType, PluginLimitType
 
 from .core import validate_active_model_on_startup
 from .core.queue_manager import draw_queue_manager
 
+original_aiconfig_init = AIConfig.__init__
+
+
 require("nonebot_plugin_apscheduler")
-from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_apscheduler import scheduler  # noqa: E402
 
 __plugin_meta__ = PluginMetadata(
     name="多模态AI助手",
@@ -62,7 +65,7 @@ __plugin_meta__ = PluginMetadata(
     supported_adapters={"~onebot.v11"},
     extra=PluginExtraData(
         author="webjoin111",
-        version="1.0",
+        version="1.0.1",
         configs=[
             RegisterConfig(
                 module="multimodal_ai",
@@ -90,12 +93,6 @@ __plugin_meta__ = PluginMetadata(
             ),
             RegisterConfig(
                 module="multimodal_ai",
-                key="AGENT_MODEL_NAME",
-                value="Gemini/gemini-2.5-flash-lite-preview-06-17",
-                help="用于Agent工具调用功能的模型名称，格式：提供商/模型名",
-            ),
-            RegisterConfig(
-                module="multimodal_ai",
                 key="enable_ai_intent_detection",
                 value=False,
                 help="是否启用AI进行意图识别。关闭时，将使用关键词匹配（性能更高，但不够智能）。",
@@ -105,12 +102,6 @@ __plugin_meta__ = PluginMetadata(
                 key="auxiliary_llm_model",
                 value="Gemini/gemini-2.5-flash-lite-preview-06-17",
                 help="辅助LLM模型名称，用于意图检测等辅助功能，格式：提供商/模型名",
-            ),
-            RegisterConfig(
-                module="multimodal_ai",
-                key="enable_mcp_tools",
-                value=False,
-                help="是否启用MCP（模型上下文协议）工具，如百度地图。需要额外安装 'mcp' 库。",
             ),
             RegisterConfig(
                 module="multimodal_ai",
@@ -301,6 +292,8 @@ async def _():
         validate_active_model_on_startup()
         logger.info("模型配置验证成功")
 
+        from .config import base_config  # noqa: F401
+
         from .core.queue_manager import draw_queue_manager
         from .core.session_manager import session_manager
 
@@ -317,6 +310,7 @@ async def _():
 async def multimodal_ai_shutdown():
     logger.info("Multimodal AI Plugin: 正在关闭，清理LLM HTTP客户端...")
     await http_client_manager.shutdown()
+
     logger.info("LLM HTTP客户端清理完成。")
 
     from .core.queue_manager import draw_queue_manager

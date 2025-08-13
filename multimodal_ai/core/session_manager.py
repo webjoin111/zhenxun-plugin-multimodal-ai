@@ -4,7 +4,6 @@
 
 import asyncio
 from dataclasses import dataclass
-from enum import Enum
 import time
 
 from zhenxun.services.llm import AI, AIConfig
@@ -13,18 +12,12 @@ from zhenxun.services.log import logger
 from ..config import base_config
 
 
-class SessionStatus(Enum):
-    IDLE = "idle"
-    AWAITING_USER_INPUT = "awaiting_user_input"
-    PROCESSING_AGENT = "processing_agent"
 
 
 @dataclass
 class SessionState:
     ai_instance: AI
-    status: SessionStatus = SessionStatus.IDLE
     last_access_time: float = 0.0
-    intent: str | None = None
 
 
 class SessionManager:
@@ -101,9 +94,7 @@ class SessionManager:
 
             if current_time - session_state.last_access_time <= timeout_seconds:
                 session_state.last_access_time = current_time
-                logger.debug(
-                    f"使用现有会话: {session_id}, 状态: {session_state.status.value}"
-                )
+                logger.debug(f"使用现有会话: {session_id}")
                 return session_state
             else:
                 del self._sessions[session_id]
@@ -134,8 +125,6 @@ class SessionManager:
         if session_id in self._sessions:
             session_state = self._sessions[session_id]
             session_state.ai_instance.clear_history()
-            session_state.status = SessionStatus.IDLE
-            session_state.intent = None
             session_state.last_access_time = time.time()
             logger.info(f"清空并重置会话状态: {session_id}")
             return True
@@ -161,8 +150,6 @@ class SessionManager:
                     base_config.get("context_timeout_minutes") * 60
                     - (time.time() - session_state.last_access_time),
                 ),
-                "status": session_state.status.value,
-                "intent": session_state.intent,
             }
 
         return None

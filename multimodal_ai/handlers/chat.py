@@ -1,5 +1,8 @@
 from typing import TYPE_CHECKING
 
+from nonebot.matcher import Matcher
+from nonebot.params import Depends
+
 if TYPE_CHECKING:
     pass
 from nonebot.adapters.onebot.v11 import (
@@ -14,10 +17,13 @@ from nonebot_plugin_alconna.uniseg import Video as UniVideo
 from nonebot_plugin_alconna.uniseg import Voice as UniVoice
 
 from zhenxun.services.llm import (
-    LLMMessage,
     get_model_instance,
     message_to_unimessage,
     unimsg_to_llm_parts,
+    LLMException,
+    LLMGenerationConfig,
+    LLMMessage,
+    chat as llm_chat_service,
 )
 from zhenxun.services.llm.types import get_user_friendly_error_message
 from zhenxun.services.log import logger
@@ -25,47 +31,59 @@ from zhenxun.services.log import logger
 from .. import ai
 from ..config import CHINESE_CHAR_THRESHOLD, base_config
 from ..core import get_current_active_model_name
-from ..core.agent_loop import run_generic_agent_loop
-from ..core.session_manager import (
-    SessionStatus,
-    session_manager,
-)
-from ..tools import (
-    MCP_AVAILABLE,
+
+from ..core.session_manager import session_manager
+
+from ..core.intent import (
     detect_function_calling_intent_with_ai,
     detect_intent_by_keywords,
 )
+
+
+
 from ..utils.converters import convert_to_image
-
-MARKDOWN_STYLING_PROMPT = """
-注意使用丰富的markdown格式让内容更美观，注意要在合适的场景使用合适的样式,不合适就不使用,包括：
-标题层级(h1-h6)、粗体(bold)、斜体(em)、引用块(blockquote)、
-有序列表(ordered list)、无序列表(unordered list)、任务列表(checkbox)、
-代码块(code)、内联代码(inline code)、表格(table)、分隔线(hr)、
-删除线(Strikethrough)、链接(links)、嵌套列表(nested lists)、emoji增强格式(emoji-enhanced formatting)、
-Mermaid图表(graph td)等。
-""".strip()
+from ..config import MARKDOWN_STYLING_PROMPT
 
 
-AGENT_CONFIGS = {
-    "MAP": {
-        "tool_name": "baidu-map",
-        "system_prompt": """你是专业的地理和路线规划助手，拥有百度地图功能。
+async def _handle_search_intent(ai_instance, message: UniMessage, query: str) -> str:
+    """处理 SEARCH 意图：直接、单次调用 Gemini Grounding。"""
+    logger.info("🚦 路由策略: SEARCH (直接调用)")
+    search_instruction = (
+        f"请用中文搜索并详细回答。用户的问题是：'{query}'\n{MARKDOWN_STYLING_PROMPT}"
+    )
 
-核心功能：
-• 地址坐标转换（地址↔坐标）
-• 地点查询（POI检索、详情获取）
-• 路线规划（多种出行方式、距离时间）
-• 实时信息（路况、天气、定位）
+    try:
+        search_response = await ai_instance.search(
+            message, instruction=search_instruction
+        )
 
-重要提醒：
-- 必须使用工具获取实时准确信息，不要凭记忆回答
-- 工具失败时说明原因并提供建议
-- 用中文回复，格式清晰，包含关键信息
+        response_text = search_response.text
 
-{MARKDOWN_STYLING_PROMPT}""",
-    },
-}
+        if search_response.grounding_metadata:
+            sources = search_response.grounding_metadata.grounding_attributions or []
+            queries = search_response.grounding_metadata.web_search_queries or []
+
+            if sources:
+                response_text += "\n\n📚 **参考来源：**\n"
+                for i, source in enumerate(sources[:3], 1):
+                    title = source.title or "未知标题"
+                    url = source.uri or ""
+                    if url:
+                        response_text += f"{i}. [{title}]({url})\n"
+                    else:
+                        response_text += f"{i}. {title}\n"
+
+            if queries:
+                response_text += f"\n🔍 **搜索查询：** {', '.join(queries)}"
+
+        return f"🔍 搜索结果：\n{response_text}"
+
+    except LLMException as e:
+        logger.warning(f"搜索失败: {e.user_friendly_message}", e=e)
+        return f"抱歉，搜索功能当前似乎出了点问题：{e.user_friendly_message}"
+    except Exception as e:
+        logger.error("处理搜索意图时发生未知错误", e=e)
+        return "抱歉，搜索功能当前似乎出了点问题，请稍后再试。"
 
 
 async def _prepare_final_response(response: str | bytes) -> str | MessageSegment:
@@ -92,7 +110,11 @@ async def _prepare_final_response(response: str | bytes) -> str | MessageSegment
 
 @ai.handle()
 async def chat_handler(
-    bot: Bot, event: MessageEvent, result: CommandResult, msg: UniMsg
+    bot: Bot,
+    event: MessageEvent,
+    result: CommandResult,
+    msg: UniMsg,
+    matcher: Matcher = Depends(),
 ):
     user_id_str = event.get_user_id()
 
@@ -164,128 +186,53 @@ async def chat_handler(
         group_id = str(event.group_id) if isinstance(event, GroupMessageEvent) else None
 
         session_state = session_manager.get_or_create_session(user_id_str, group_id)
-
-        if session_state.status == SessionStatus.PROCESSING_AGENT:
-            await ai.finish("我正在思考中，请稍等片刻再发送消息哦~")
-            return
-
-        response: str | bytes
         ai_instance = session_state.ai_instance
-        current_intent = session_state.intent
 
-        if (
-            session_state.status == SessionStatus.AWAITING_USER_INPUT
-            and current_intent in AGENT_CONFIGS
-        ):
-            logger.info(
-                f"🚦 检测到用户正处于 {current_intent} 任务中，继续Agent循环..."
-            )
-            ai_instance.history.append(
-                LLMMessage.user(await unimsg_to_llm_parts(full_message))
-            )
-            agent_config = AGENT_CONFIGS[current_intent]
-            response = await run_generic_agent_loop(
-                session_state=session_state,
-                mcp_tool_name=agent_config["tool_name"],
-                system_prompt=agent_config["system_prompt"],
-                bot=bot,
-                event=event,
-                model_name=base_config.get("AGENT_MODEL_NAME"),
-            )
+        if base_config.get("enable_ai_intent_detection"):
+            intent_result = await detect_function_calling_intent_with_ai(query)
         else:
-            if session_state.status != SessionStatus.IDLE:
-                logger.warning(
-                    f"会话状态为 {session_state.status.value} 但未被处理，重置为IDLE。"
-                )
-                session_state.status = SessionStatus.IDLE
-                session_state.intent = None
+            intent_result = detect_intent_by_keywords(query)
 
-            if base_config.get("enable_ai_intent_detection"):
-                intent_result = await detect_function_calling_intent_with_ai(query)
-            else:
-                intent_result = detect_intent_by_keywords(query)
+        intent = intent_result.get("intent")
+        logger.info(f"🧠 意图检测: {intent}")
 
-            intent = intent_result.get("intent")
-            logger.info(
-                f"🧠 意图检测: {intent} (置信度: {intent_result.get('confidence', 1.0):.2f}) "
-                f"| AI检测: {'已启用' if base_config.get('enable_ai_intent_detection') else '已禁用'}"
+        generation_config_params = {
+            k: v
+            for k, v in main_args.items()
+            if k in ["temperature", "top_p", "top_k", "max_tokens", "stop_sequences"]
+        }
+
+        base_gen_config = (
+            LLMGenerationConfig(**generation_config_params)
+            if generation_config_params
+            else None
+        )
+
+        response_text = ""
+
+        user_content_parts = await unimsg_to_llm_parts(full_message)
+        current_user_message = LLMMessage.user(user_content_parts or query)
+
+        if intent == "SEARCH":
+            response_text = await _handle_search_intent(
+                ai_instance, full_message, query
             )
+            ai_instance.add_user_message_to_history(current_user_message)
+            ai_instance.add_assistant_response_to_history(response_text)
 
-            if (
-                intent in AGENT_CONFIGS
-                and base_config.get("enable_mcp_tools")
-                and MCP_AVAILABLE
-            ):
-                logger.info(f"🚦 路由到通用 Agent 循环处理: {intent}")
-                ai_instance.history.append(
-                    LLMMessage.user(await unimsg_to_llm_parts(full_message))
-                )
-                session_state.intent = intent
-                agent_config = AGENT_CONFIGS[intent]
-                response = await run_generic_agent_loop(
-                    session_state=session_state,
-                    mcp_tool_name=agent_config["tool_name"],
-                    system_prompt=agent_config["system_prompt"],
-                    bot=bot,
-                    event=event,
-                    model_name=base_config.get("AGENT_MODEL_NAME"),
-                )
-            elif intent == "SEARCH":
-                logger.info("🚦 路由到内置搜索: SEARCH")
-                search_instruction = (
-                    f"请用中文搜索并详细回答。用户的问题是：'{query}'\n"
-                    f"{MARKDOWN_STYLING_PROMPT}"
-                )
-                search_result = await ai_instance.search(
-                    full_message, instruction=search_instruction
-                )
+        if intent == "CHAT":
+            logger.info("🚦 路由策略: CHAT (直接调用 ai.chat)")
+            chat_response = await ai_instance.chat(
+                current_user_message,
+                instruction=MARKDOWN_STYLING_PROMPT,
+                **base_gen_config.to_dict() if base_gen_config else {},
+            )
+            response_text = chat_response.text
 
-                if search_result.get("success", False):
-                    response_text = search_result.get("text", "")
-                    sources = search_result.get("sources", [])
-                    queries = search_result.get("queries", [])
+        if not response_text:
+            response_text = "任务已执行，但AI没有提供额外的文本回复。"
 
-                    if queries:
-                        response_text += "\n\n🔍 搜索查询："
-                        for i, query_text in enumerate(queries[:3], 1):
-                            response_text += f"\n{i}. {query_text}"
-
-                    if sources:
-                        response_text += "\n\n📚 信息来源："
-                        for i, source in enumerate(sources[:5], 1):
-                            title = getattr(source, "title", "未知来源")
-                            uri = getattr(source, "uri", "")
-                            response_text += f"\n{i}. {title}" + (
-                                f" - {uri}" if uri else ""
-                            )
-
-                    logger.info(
-                        f"✅ 搜索成功，来源数量: {len(sources)}, 查询数量: {len(queries)}"
-                    )
-                    response = f"🔍 搜索结果：\n{response_text}"
-                else:
-                    logger.warning("搜索失败，回退到普通分析模式")
-                    fallback_prompt = (
-                        f"请用中文详细回答关于 '{query}' 的问题。请提供准确、详细的信息。\n"
-                        f"{MARKDOWN_STYLING_PROMPT}"
-                    )
-                    llm_response = await ai_instance.analyze(
-                        full_message, instruction=fallback_prompt
-                    )
-                    response = llm_response.text
-            else:
-                logger.info("🚦 路由到简单对话: CHAT")
-
-                content_parts = await unimsg_to_llm_parts(full_message)
-
-                if not ai_instance.history:
-                    chat_instruction = f"请用中文回复。\n{MARKDOWN_STYLING_PROMPT}"
-                    ai_instance.history.append(LLMMessage.system(chat_instruction))
-
-                llm_response_obj = await ai_instance.chat(content_parts or "")
-                response = llm_response_obj.text
-
-        final_message_to_send = await _prepare_final_response(response)
+        final_message_to_send = await _prepare_final_response(response_text)
         await ai.finish(final_message_to_send)
 
     except Exception as e:
