@@ -12,8 +12,6 @@ from zhenxun.services.log import logger
 from ..config import base_config
 
 
-
-
 @dataclass
 class SessionState:
     ai_instance: AI
@@ -118,20 +116,20 @@ class SessionManager:
         )
         return AI(config=config)
 
-    def clear_session(self, user_id: str, group_id: str | None = None) -> bool:
+    async def clear_session(self, user_id: str, group_id: str | None = None) -> bool:
         """清空指定用户的会话历史并重置状态"""
         session_id = self._get_session_id(user_id, group_id)
 
         if session_id in self._sessions:
             session_state = self._sessions[session_id]
-            session_state.ai_instance.clear_history()
+            await session_state.ai_instance.clear_history()
             session_state.last_access_time = time.time()
             logger.info(f"清空并重置会话状态: {session_id}")
             return True
 
         return False
 
-    def get_session_info(
+    async def get_session_info(
         self, user_id: str, group_id: str | None = None
     ) -> dict | None:
         """获取会话信息"""
@@ -142,7 +140,7 @@ class SessionManager:
 
             return {
                 "session_id": session_id,
-                "history_length": len(session_state.ai_instance.history),
+                "history_length": len(await session_state.ai_instance.memory.get_history(session_state.ai_instance.session_id)),
                 "last_access_time": session_state.last_access_time,
                 "timeout_minutes": base_config.get("context_timeout_minutes"),
                 "time_remaining": max(

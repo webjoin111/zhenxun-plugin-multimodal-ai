@@ -23,13 +23,18 @@ from zhenxun.services.llm import (
     LLMException,
     LLMGenerationConfig,
     LLMMessage,
-    chat as llm_chat_service,
 )
 from zhenxun.services.llm.types import get_user_friendly_error_message
 from zhenxun.services.log import logger
 
+from zhenxun import ui
 from .. import ai
-from ..config import CHINESE_CHAR_THRESHOLD, base_config
+from ..config import (
+    CHINESE_CHAR_THRESHOLD,
+    CSS_DIR,
+    MARKDOWN_STYLING_PROMPT,
+    base_config,
+)
 from ..core import get_current_active_model_name
 
 from ..core.session_manager import session_manager
@@ -38,11 +43,6 @@ from ..core.intent import (
     detect_function_calling_intent_with_ai,
     detect_intent_by_keywords,
 )
-
-
-
-from ..utils.converters import convert_to_image
-from ..config import MARKDOWN_STYLING_PROMPT
 
 
 async def _handle_search_intent(ai_instance, message: UniMessage, query: str) -> str:
@@ -90,14 +90,24 @@ async def _prepare_final_response(response: str | bytes) -> str | MessageSegment
     """统一处理最终的响应，准备待发送的消息段，包括Markdown转图片逻辑"""
     if isinstance(response, bytes):
         return MessageSegment.image(response)
-
+    assert isinstance(response, str)
     if base_config.get("enable_md_to_pic"):
         if (
-            sum(1 for c in response if "\u4e00" <= c <= "\u9fff")
+            sum(1 for c in response if "\u4e00" <= c <= "\u9fff")  # type: ignore
             >= CHINESE_CHAR_THRESHOLD
         ):
             try:
-                image_data = await convert_to_image(response)
+                theme_name = base_config.get("THEME", "light")
+                css_path = CSS_DIR / f"{theme_name}.css"
+                md_component = ui.markdown(response)
+                md_component.css_path = str(css_path.absolute())
+                md_component.component_css = """
+                body {
+                    padding: 20px;
+                    line-height: 1.6;
+                }
+                """
+                image_data = await ui.render(md_component)
                 if image_data:
                     return MessageSegment.image(image_data)
             except Exception as e:
@@ -217,8 +227,8 @@ async def chat_handler(
             response_text = await _handle_search_intent(
                 ai_instance, full_message, query
             )
-            ai_instance.add_user_message_to_history(current_user_message)
-            ai_instance.add_assistant_response_to_history(response_text)
+            await ai_instance.add_user_message_to_history(current_user_message)
+            await ai_instance.add_assistant_response_to_history(response_text)
 
         if intent == "CHAT":
             logger.info("🚦 路由策略: CHAT (直接调用 ai.chat)")

@@ -46,8 +46,7 @@ async def handle_ai_config(bot: Bot, event: MessageEvent, result: CommandResult)
                     f"使用 'ai配置 md on/off' 来切换状态"
                 )
 
-        elif subcommands.get("绘图") or subcommands.get("draw"):
-            subcommand_key = "绘图" if subcommands.get("绘图") else "draw"
+        elif (subcommand_key := next((k for k in ("绘图", "draw") if subcommands.get(k)), None)):
             action = subcommands[subcommand_key].args.get("action", "").lower()
             if action in ["on", "enable"]:
                 Config.set_config(
@@ -61,15 +60,15 @@ async def handle_ai_config(bot: Bot, event: MessageEvent, result: CommandResult)
                 await ai_config.finish("已禁用AI绘图功能")
             else:
                 await ai_config.finish(
-                    f"当前AI绘图状态：{'已启用' if base_config.get('enable_ai_draw') else '已禁用'}\n"
-                    f"使用 'ai配置 绘图 on/off' 来切换状态"
+                    f"当前 AI 绘图 (draw) 状态：{'已启用' if base_config.get('enable_ai_draw') else '已禁用'}\n"
+                    f"使用 'ai配置 draw on/off' 来切换状态"
                 )
 
         else:
             await ai_config.finish(
                 "AI配置管理命令：\n"
                 "- ai配置 md on/off：开关Markdown转图片功能\n"
-                "- ai配置 绘图 on/off：开关AI绘图功能"
+                "- ai配置 draw on/off：开关AI绘图功能"
             )
 
     except Exception as e:

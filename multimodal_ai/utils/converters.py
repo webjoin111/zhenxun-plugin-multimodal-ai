@@ -1,112 +1,13 @@
 import io
 from pathlib import Path
-import re
 import time
 import uuid
 import wave
 
 import aiofiles
-import markdown
-from nonebot_plugin_htmlrender import data_source as hr_data
-from nonebot_plugin_htmlrender import html_to_pic
 
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
-
-from ..config import CSS_DIR, MD_FONT_SIZE, base_config
-
-env = hr_data.env
-
-
-async def convert_to_image(markdown_text: str) -> bytes | None:
-    """将Markdown文本转换为图片"""
-    if not html_to_pic or not env:
-        logger.error(
-            "未安装 nonebot_plugin_htmlrender 或其依赖，无法使用 Markdown 转图片功能"
-        )
-        return None
-
-    try:
-        processed_text = process_markdown(markdown_text)
-
-        html_content = markdown.markdown(
-            processed_text,
-            extensions=[
-                "pymdownx.tasklist",
-                "tables",
-                "fenced_code",
-                "codehilite",
-                "mdx_math",
-                "pymdownx.tilde",
-            ],
-            extension_configs={"mdx_math": {"enable_dollar_delimiter": True}},
-        )
-
-        theme_name = base_config.get("THEME", "light")
-        theme_css_path = CSS_DIR / f"{theme_name}.css"
-
-        if not theme_css_path.exists():
-            logger.warning(
-                f"主题CSS文件 '{theme_css_path}' 不存在。将回退到默认的 'light' 主题。"
-            )
-            theme_css_path = CSS_DIR / "light.css"
-            if not theme_css_path.exists():
-                logger.error(
-                    f"致命错误：默认主题文件 '{theme_css_path}' 缺失，无法生成图片。"
-                )
-                return None
-
-        async with aiofiles.open(theme_css_path, encoding="utf-8") as f:
-            css_content = await f.read()
-        logger.debug(f"成功加载Markdown主题CSS: {theme_css_path}")
-
-        additional_css = f"""
-        body {{
-            font-size: {MD_FONT_SIZE}px;
-            padding: 20px;
-            line-height: 1.6;
-        }}
-        """
-        modified_css = css_content + additional_css
-
-        template = env.get_template("markdown.html")
-        extra = ""
-        if "math/tex" in html_content:
-            katex_css = await hr_data.read_tpl("katex/katex.min.b64_fonts.css")
-            katex_js = await hr_data.read_tpl("katex/katex.min.js")
-            mhchem_js = await hr_data.read_tpl("katex/mhchem.min.js")
-            mathtex_js = await hr_data.read_tpl("katex/mathtex-script-type.min.js")
-            extra = (
-                f'<style type="text/css">{katex_css}</style>'
-                f"<script defer>{katex_js}</script>"
-                f"<script defer>{mhchem_js}</script>"
-                f"<script defer>{mathtex_js}</script>"
-            )
-
-        full_html = await template.render_async(
-            md=html_content, css=modified_css, extra=extra
-        )
-
-        image_data = await html_to_pic(
-            html=full_html,
-            template_path=f"file://{hr_data.TEMPLATES_PATH}",
-            viewport={"width": 800, "height": 10},
-            device_scale_factor=2,
-        )
-
-        return image_data
-    except Exception as e:
-        logger.error(f"Markdown转图片失败: {e}")
-        return None
-
-
-def process_markdown(text: str) -> str:
-    """处理Markdown文本，确保格式正确"""
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    text = re.sub(r"```(\w*)\s*\n", r"```\1\n", text)
-    text = re.sub(r"^(#+)([^\s#])", r"\1 \2", text, flags=re.MULTILINE)
-    text = re.sub(r"^([*\-+])([^\s*\-+])", r"\1 \2", text, flags=re.MULTILINE)
-    return text
 
 
 async def save_audio_to_temp_file(
@@ -184,7 +85,7 @@ def convert_gif_to_png(gif_data: bytes) -> tuple[bytes, str]:
 
         gif_image = Image.open(io.BytesIO(gif_data))
 
-        if hasattr(gif_image, "is_animated") and gif_image.is_animated:
+        if getattr(gif_image, 'n_frames', 1) > 1:
             gif_image.seek(0)
             logger.debug("检测到动画GIF，将使用第一帧进行转换")
 

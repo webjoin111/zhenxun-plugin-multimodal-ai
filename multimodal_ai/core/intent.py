@@ -63,13 +63,13 @@ async def detect_function_calling_intent_with_ai(query: str) -> dict:
             f"意图检测LLM调用参数: model={base_config.get('auxiliary_llm_model')}"
         )
         response = await chat(
-            intent_detection_prompt, model=base_config.get("auxiliary_llm_model")
+            intent_detection_prompt, model=base_config.get("auxiliary_llm_model"),
         )
 
         import json
         import re
 
-        json_match = re.search(r"\{.*\}", response, re.DOTALL)
+        json_match = re.search(r"\{.*\}", response.text, re.DOTALL)
         if json_match:
             result = json.loads(json_match.group())
 
