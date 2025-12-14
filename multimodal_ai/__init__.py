@@ -52,7 +52,7 @@ __plugin_meta__ = PluginMetadata(
     supported_adapters={"~onebot.v11"},
     extra=PluginExtraData(
         author="webjoin111",
-        version="1.0.2",
+        version="1.0.3",
         configs=[
             RegisterConfig(
                 module="multimodal_ai",

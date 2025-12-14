@@ -166,17 +166,17 @@ async def chat_handler(
                 unsupported_media = []
                 if (
                     full_message.has(UniImage)
-                    and not model_instance.can_process_images()
+                    and not model_instance.can_process_images
                 ):
                     unsupported_media.append("图片")
                 if (
                     full_message.has(UniVideo)
-                    and not model_instance.can_process_video()
+                    and not model_instance.can_process_video
                 ):
                     unsupported_media.append("视频")
                 if (
                     full_message.has(UniVoice)
-                    and not model_instance.can_process_audio()
+                    and not model_instance.can_process_audio
                 ):
                     unsupported_media.append("音频")
 
