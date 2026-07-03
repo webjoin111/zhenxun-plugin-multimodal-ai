@@ -4,9 +4,8 @@ from zhenxun.configs.config import Config
 
 PLUGIN_DIR = Path(__file__).parent
 
-# Markdown转图片相关配置
 CHINESE_CHAR_THRESHOLD = 100  # 中文字符阈值，超过此值将转为图片
-CSS_DIR = PLUGIN_DIR / "css"  # Markdown转图片的CSS样式文件目录
+CSS_DIR = PLUGIN_DIR / "css"
 
 base_config = Config.get("multimodal_ai")
 

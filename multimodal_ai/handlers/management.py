@@ -3,12 +3,11 @@ from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import CommandResult
 
 from zhenxun.configs.config import Config
-from zhenxun.services.llm.types import get_user_friendly_error_message
+from zhenxun.services.ai.core.exceptions import get_user_friendly_error_message
 from zhenxun.services.log import logger
 
-from .. import ai_config, ai_model, ai_theme
+from .. import ai_config, ai_theme
 from ..config import CSS_DIR, base_config
-from ..core import handle_list_models, handle_switch_model
 
 
 def _list_available_themes() -> list[str]:
@@ -78,42 +77,7 @@ async def handle_ai_config(bot: Bot, event: MessageEvent, result: CommandResult)
             await ai_config.finish(f"处理请求失败: {friendly_message}")
 
 
-@ai_model.handle()
-async def model_management_handler(
-    bot: Bot, event: MessageEvent, result: CommandResult
-):
-    try:
-        subcommands = result.result.subcommands if result.result.subcommands else {}
 
-        if subcommands.get("列表") or subcommands.get("list"):
-            model_info = handle_list_models()
-            await ai_model.finish(model_info)
-
-        elif subcommands.get("切换") or subcommands.get("switch"):
-            if not await SUPERUSER(bot, event):
-                await ai_model.finish("仅超级管理员可以切换模型")
-
-            subcommand_key = "切换" if subcommands.get("切换") else "switch"
-            model_name = subcommands[subcommand_key].args.get("model_name")
-
-            if not model_name:
-                await ai_model.finish("请指定要切换的模型名称")
-
-            _, message = handle_switch_model(model_name)
-            await ai_model.finish(message)
-
-        else:
-            await ai_model.finish(
-                "AI模型管理命令：\n"
-                "- ai模型 列表：查看所有可用的模型\n"
-                "- ai模型 切换 <模型名称>：切换对话模型（仅超级用户）\n"
-            )
-
-    except Exception as e:
-        if e.__class__.__name__ != "FinishedException":
-            logger.error(f"处理模型管理请求失败: {e}")
-            friendly_message = get_user_friendly_error_message(e)
-            await ai_model.finish(f"处理请求失败: {friendly_message}")
 
 
 @ai_theme.handle()

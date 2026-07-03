@@ -6,15 +6,15 @@ import asyncio
 from dataclasses import dataclass
 import time
 
-from zhenxun.services.llm import AI, AIConfig
+from zhenxun.services.ai.context.memory.manager import memory_manager
 from zhenxun.services.log import logger
+from nonebot import get_driver
 
-from ..config import base_config
+from .config import base_config
 
 
 @dataclass
 class SessionState:
-    ai_instance: AI
     last_access_time: float = 0.0
 
 
@@ -64,6 +64,7 @@ class SessionManager:
 
         for session_id in expired_sessions:
             del self._sessions[session_id]
+            await memory_manager.cleaner().session(session_id).clear_short_term()
             logger.debug(f"清理过期会话: {session_id}")
 
         if expired_sessions:
@@ -76,12 +77,10 @@ class SessionManager:
         else:
             return f"user_{user_id}"
 
-    def get_or_create_session(
-        self, user_id: str, group_id: str | None = None
-    ) -> SessionState:
-        """获取或创建会话状态"""
+    async def touch_session(self, user_id: str, group_id: str | None = None) -> str:
+        """更新会话最后访问时间并返回 session_id"""
         if base_config.get("context_timeout_minutes") <= 0:
-            return SessionState(ai_instance=self._create_new_ai_instance())
+            return self._get_session_id(user_id, group_id)
 
         session_id = self._get_session_id(user_id, group_id)
         current_time = time.time()
@@ -92,29 +91,13 @@ class SessionManager:
 
             if current_time - session_state.last_access_time <= timeout_seconds:
                 session_state.last_access_time = current_time
-                logger.debug(f"使用现有会话: {session_id}")
-                return session_state
+                return session_id
             else:
                 del self._sessions[session_id]
-                logger.debug(f"会话过期，已删除: {session_id}")
+                await memory_manager.cleaner().session(session_id).clear_short_term()
 
-        new_session_state = SessionState(
-            ai_instance=self._create_new_ai_instance(),
-            last_access_time=current_time,
-        )
-        self._sessions[session_id] = new_session_state
-        logger.debug(f"创建新会话: {session_id}")
-        return new_session_state
-
-    def _create_new_ai_instance(self) -> AI:
-        """创建新的AI实例"""
-        target_model = base_config.get("MODEL_NAME")
-
-        config = AIConfig(
-            model=target_model,
-            default_preserve_media_in_history=True,
-        )
-        return AI(config=config)
+        self._sessions[session_id] = SessionState(last_access_time=current_time)
+        return session_id
 
     async def clear_session(self, user_id: str, group_id: str | None = None) -> bool:
         """清空指定用户的会话历史并重置状态"""
@@ -122,7 +105,7 @@ class SessionManager:
 
         if session_id in self._sessions:
             session_state = self._sessions[session_id]
-            await session_state.ai_instance.clear_history()
+            await memory_manager.cleaner().session(session_id).clear_short_term()
             session_state.last_access_time = time.time()
             logger.info(f"清空并重置会话状态: {session_id}")
             return True
@@ -140,7 +123,7 @@ class SessionManager:
 
             return {
                 "session_id": session_id,
-                "history_length": len(await session_state.ai_instance.memory.get_history(session_state.ai_instance.session_id)),
+                "history_length": "未知(受新核心托管)",
                 "last_access_time": session_state.last_access_time,
                 "timeout_minutes": base_config.get("context_timeout_minutes"),
                 "time_remaining": max(
@@ -158,3 +141,15 @@ class SessionManager:
 
 
 session_manager = SessionManager()
+
+driver = get_driver()
+
+
+@driver.on_startup
+async def _start_ai_session_cleanup():
+    session_manager.start_cleanup_task()
+
+
+@driver.on_shutdown
+async def _stop_ai_session_cleanup():
+    session_manager.stop_cleanup_task()
